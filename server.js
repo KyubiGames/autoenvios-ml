@@ -1,96 +1,38 @@
 import express from "express";
 import axios from "axios";
+import bodyParser from "body-parser";
+import cors from "cors";
 
 const app = express();
-app.use(express.json());
+app.use(cors());
+app.use(bodyParser.json());
 
-// Variables desde Railway (Environment Variables)
-const CLIENT_ID = process.env.CLIENT_ID;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
-const PRODUCTO_OBJETIVO = process.env.PRODUCTO_OBJETIVO; // ID del producto del kit
+const CLIENT_ID = process.env.ML_CLIENT_ID;
+const CLIENT_SECRET = process.env.ML_CLIENT_SECRET;
+const REDIRECT_URI = process.env.ML_REDIRECT_URI;
 
-// --- Obtener nuevo access_token usando el refresh_token ---
-async function obtenerToken() {
-  try {
-    const res = await axios.post("https://api.mercadolibre.com/oauth/token", null, {
-      params: {
-        grant_type: "refresh_token",
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        refresh_token: REFRESH_TOKEN
-      }
-    });
+// ⭐ Guardaremos los tokens en variables simples.
+// Si después querés, lo pasamos a base de datos.
+let access_token = null;
+let refresh_token = null;
 
-    return res.data.access_token;
-
-  } catch (err) {
-    console.error("Error refrescando token:", err.response?.data || err);
-    return null;
-  }
-}
-
-// --- Ruta Webhook ---
-app.post("/webhook", async (req, res) => {
-  try {
-    const notificacion = req.body;
-
-    if (!notificacion.topic || notificacion.topic !== "orders") {
-      return res.sendStatus(200);
-    }
-
-    const orderId = notificacion.resource.split("/")[2];
-    const token = await obtenerToken();
-
-    if (!token) return res.sendStatus(500);
-
-    // Obtener información de la orden
-    const order = await axios.get(
-      `https://api.mercadolibre.com/orders/${orderId}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    const producto = order.data.order_items[0];
-
-    // Si NO es el producto objetivo → ignorar
-    if (producto.item.id !== PRODUCTO_OBJETIVO) {
-      return res.sendStatus(200);
-    }
-
-    const buyerId = order.data.buyer.id;
-    const sellerId = order.data.seller.id;
-
-    // --- Enviar el mensaje automático ---
-    await axios.post(
-      "https://api.mercadolibre.com/messages/send",
-      {
-        from: { user_id: sellerId },
-        to: { user_id: buyerId },
-        text: {
-          plain: {
-            message: 
-`¡Gracias por tu compra! 🥳  
-Aquí tenés el link de descarga de tu kit:
-
-👉 https://tu-link-de-descarga.com
-
-Cualquier duda, estoy para ayudarte.`
-          }
-        }
-      },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    res.sendStatus(200);
-
-  } catch (e) {
-    console.error("Error en webhook:", e.response?.data || e);
-    res.sendStatus(500);
-  }
+// ------------------------------
+// 1) INICIAR LOGIN EN MERCADO LIBRE
+// ------------------------------
+app.get("/auth", (req, res) => {
+    const url = `https://auth.mercadolibre.com.ar/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}`;
+    return res.redirect(url);
 });
 
-app.get("/", (req, res) => {
-  res.send("Autoenvíos Mercado Libre funcionando ✔️");
-});
+// ------------------------------
+// 2) RECIBIR CODE Y GENERAR REFRESH TOKEN
+// ------------------------------
+app.get("/callback", async (req, res) => {
+    const code = req.query.code;
 
-app.listen(3000, () => console.log("🔥 Servidor iniciado en Railway"));
+    try {
+        const response = await axios.post(
+            "https://api.mercadolibre.com/oauth/token",
+            {
+                grant_type: "authorization_code",
+                client_id: CLIENT_ID,
