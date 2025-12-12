@@ -113,12 +113,11 @@ Recordá abrir este mensaje desde una computadora. Desde la app del celular no v
 Para descargar tu kit de *Super Mario*, copiá y pegá este link en tu navegador:
 
 LINK:
-https://www.mediafire.com/folder/hq3d89hrpymaw/Kit_Imprimible_Super_Mario
+https://app.mediafire.com/folder/uphsmmd6h5tvo
 
 Si necesitás ayuda, escribime por esta mensajería. Respondo siempre dentro de las 24 hs.
 
-Podés ver más diseños acá:
-https://listado.mercadolibre.com.ar/_CustId_661848292
+La invitación interactiva sale $1.000 y en caso de que la quieras, tendrás que enviarme la tarjeta ya editada y le agregamos los datos para que sea interactiva.
 
 ¡Gracias nuevamente y que disfrutes tu compra! 🎉
 `,
