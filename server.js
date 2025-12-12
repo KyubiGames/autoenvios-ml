@@ -104,7 +104,7 @@ app.post("/notifications", async (req, res) => {
 
 // Mensajes personalizados por publicación (item_id)
 const mensajesPorProducto = {
-    "MLA1435562627": "¡Gracias por comprar el Kit Imprimible de Super Mario Bros! 🍄🎉\nAquí tenés tu descarga:\nhttps://link-mario",
+    "MLA1435562627": "¡Gracias por comprar el Kit Imprimible de Super Mario Bros! 🍄🎉\nAquí tenés tu descarga:\https://www.mediafire.com/folder/uphsmmd6h5tvo/Super+Mario+Bros",
     "MLA000000000": "Mensaje para otra publicación",
     "MLA111111111": "Mensaje para otra publicación más",
 };
@@ -123,9 +123,11 @@ async function enviarMensajeAutomatico(order_id) {
         );
 
         const buyer_id = order.data.buyer.id;
-
-        // 📌 Tomar el PRIMER producto comprado
+        const buyer_name = order.data.buyer.first_name;  // 👈 OBTENEMOS EL NOMBRE
         const item_id = order.data.order_items[0].item.id;
+        
+        console.log("👤 Comprador:", buyer_name);
+
 
         console.log("🧾 Producto comprado:", item_id);
 
@@ -135,7 +137,33 @@ async function enviarMensajeAutomatico(order_id) {
         // 📌 Mensaje final (personalizado o genérico)
         const texto = mensajePersonalizado
             ? mensajePersonalizado
-            : "¡Gracias por tu compra! 🎉 Aquí tenés tu descarga:\nhttps://link-generico";
+            const mensajesPorPublicacion = {
+              "MLA2647136094": (buyer) => `
+            Hola ${buyer.first_name}, ¡muchas gracias por tu compra! 💛
+            
+            Recordá abrir este mensaje desde una computadora. Desde la app del celular no vas a poder copiar correctamente el enlace.
+            
+            Para descargar tu kit de *Super Mario*, copiá y pegá este link en tu navegador:
+            
+            LINK:
+            https://www.mediafire.com/folder/hq3d89hrpymaw/Kit_Imprimible_Super_Mario
+            
+            Si necesitás ayuda, escribime por esta mensajería. Respondo siempre dentro de las 24 hs.
+            
+            Podés ver más diseños acá:
+            https://listado.mercadolibre.com.ar/_CustId_661848292
+            
+            ¡Gracias nuevamente y que disfrutes tu compra! 🎉
+            `,
+            
+              // ► EJEMPLO para otra publicación
+              "MLA987654321": (buyer) => `
+            Hola ${buyer.first_name}, gracias por comprar el kit de Sonic 🦔💙
+            
+            (otro texto personalizado)
+            `
+            };
+
 
         // 2) Enviar mensaje
         const mensaje = {
