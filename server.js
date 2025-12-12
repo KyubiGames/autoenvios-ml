@@ -137,8 +137,9 @@ async function enviarMensajeAutomatico(order_id) {
         // 📌 Mensaje final (personalizado o genérico)
         const texto = mensajePersonalizado
             ? mensajePersonalizado
+            // Mensajes personalizados por publicación (item_id)
             const mensajesPorPublicacion = {
-              "MLA2647136094": (buyer) => `
+                "MLA2647136094": (buyer) => `
             Hola ${buyer.first_name}, ¡muchas gracias por tu compra! 💛
             
             Recordá abrir este mensaje desde una computadora. Desde la app del celular no vas a poder copiar correctamente el enlace.
@@ -156,14 +157,12 @@ async function enviarMensajeAutomatico(order_id) {
             ¡Gracias nuevamente y que disfrutes tu compra! 🎉
             `,
             
-              // ► EJEMPLO para otra publicación
-              "MLA987654321": (buyer) => `
+                "MLA987654321": (buyer) => `
             Hola ${buyer.first_name}, gracias por comprar el kit de Sonic 🦔💙
             
             (otro texto personalizado)
             `
             };
-
 
         // 2) Enviar mensaje
         const mensaje = {
