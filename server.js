@@ -102,12 +102,18 @@ app.post("/notifications", async (req, res) => {
     res.sendStatus(200);
 });
 
+// Mensajes personalizados por publicación (item_id)
+const mensajesPorProducto = {
+    "MLA1435562627": "¡Gracias por comprar el Kit Imprimible de Super Mario Bros! 🍄🎉\nAquí tenés tu descarga:\nhttps://link-mario",
+    "MLA000000000": "Mensaje para otra publicación",
+    "MLA111111111": "Mensaje para otra publicación más",
+};
+
 // ------------------------------
 // 5) ENVIAR MENSAJE POST-VENTA AUTOMÁTICO
 // ------------------------------
 async function enviarMensajeAutomatico(order_id) {
     try {
-        // Renovar token por las dudas
         await renovarToken();
 
         // 1) Obtener datos de la orden
@@ -118,11 +124,24 @@ async function enviarMensajeAutomatico(order_id) {
 
         const buyer_id = order.data.buyer.id;
 
-        // 2) Enviar mensaje AUTOMÁTICO al comprador
+        // 📌 Tomar el PRIMER producto comprado
+        const item_id = order.data.order_items[0].item.id;
+
+        console.log("🧾 Producto comprado:", item_id);
+
+        // 📌 Buscar mensaje personalizado
+        const mensajePersonalizado = mensajesPorProducto[item_id];
+
+        // 📌 Mensaje final (personalizado o genérico)
+        const texto = mensajePersonalizado
+            ? mensajePersonalizado
+            : "¡Gracias por tu compra! 🎉 Aquí tenés tu descarga:\nhttps://link-generico";
+
+        // 2) Enviar mensaje
         const mensaje = {
             from: { user_id: "me" },
             to: { user_id: buyer_id },
-            text: "¡Gracias por tu compra! 🎉 Aquí tenés el link de descarga del kit:\n\nhttps://TU_LINK_DE_DESCARGA"
+            text: texto
         };
 
         await axios.post(
