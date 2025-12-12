@@ -11,8 +11,7 @@ const CLIENT_ID = process.env.ML_CLIENT_ID;
 const CLIENT_SECRET = process.env.ML_CLIENT_SECRET;
 const REDIRECT_URI = process.env.ML_REDIRECT_URI;
 
-// ⭐ Guardaremos los tokens en variables simples.
-// Si después querés, lo pasamos a base de datos.
+// Guardamos los tokens en memoria (luego podés pasarlo a DB)
 let access_token = null;
 let refresh_token = null;
 
@@ -58,7 +57,7 @@ app.get("/callback", async (req, res) => {
 });
 
 // ------------------------------
-// 3) RENOVAR TOKEN AUTOMÁTICAMENTE CUANDO SE NECESITE
+// 3) RENOVAR TOKEN AUTOMÁTICAMENTE
 // ------------------------------
 async function renovarToken() {
     if (!refresh_token) return;
@@ -85,14 +84,13 @@ async function renovarToken() {
 }
 
 // ------------------------------
-// 4) RECIBIR NOTIFICACIONES DE MERCADO LIBRE
+// 4) WEBHOOK NOTIFICATIONS
 // ------------------------------
 app.post("/notifications", async (req, res) => {
     console.log("🔔 Notificación recibida:", req.body);
 
     const topic = req.body.topic;
 
-    // Solo nos interesa "orders_v2"
     if (topic === "orders_v2") {
         const order_id = req.body.resource.split("/")[2];
         console.log("🛒 Nueva compra:", order_id);
@@ -102,75 +100,78 @@ app.post("/notifications", async (req, res) => {
     res.sendStatus(200);
 });
 
-// Mensajes personalizados por publicación (item_id)
-const mensajesPorProducto = {
-    "MLA1435562627": "¡Gracias por comprar el Kit Imprimible de Super Mario Bros! 🍄🎉\nAquí tenés tu descarga:\https://www.mediafire.com/folder/uphsmmd6h5tvo/Super+Mario+Bros",
-    "MLA000000000": "Mensaje para otra publicación",
-    "MLA111111111": "Mensaje para otra publicación más",
+// ------------------------------
+// 5) MENSAJES PERSONALIZADOS POR PUBLICACIÓN
+// ------------------------------
+const mensajesPorPublicacion = {
+    // SUPER MARIO
+    "MLA2647136094": (buyer) => `
+Hola ${buyer.first_name}, ¡muchas gracias por tu compra! 💛
+
+Recordá abrir este mensaje desde una computadora. Desde la app del celular no vas a poder copiar correctamente el enlace.
+
+Para descargar tu kit de *Super Mario*, copiá y pegá este link en tu navegador:
+
+LINK:
+https://www.mediafire.com/folder/hq3d89hrpymaw/Kit_Imprimible_Super_Mario
+
+Si necesitás ayuda, escribime por esta mensajería. Respondo siempre dentro de las 24 hs.
+
+Podés ver más diseños acá:
+https://listado.mercadolibre.com.ar/_CustId_661848292
+
+¡Gracias nuevamente y que disfrutes tu compra! 🎉
+`,
+
+    // SONIC (EJEMPLO)
+    "MLA987654321": (buyer) => `
+Hola ${buyer.first_name}, gracias por comprar el kit de Sonic 🦔💙
+
+Acá tenés tu enlace de descarga:
+https://link-sonic
+
+Cualquier consulta, estoy para ayudarte 😊
+`,
 };
 
 // ------------------------------
-// 5) ENVIAR MENSAJE POST-VENTA AUTOMÁTICO
+// 6) ENVIAR MENSAJE POST-VENTA
 // ------------------------------
 async function enviarMensajeAutomatico(order_id) {
     try {
         await renovarToken();
 
-        // 1) Obtener datos de la orden
+        // Obtener datos de la orden
         const order = await axios.get(
             `https://api.mercadolibre.com/orders/${order_id}`,
             { headers: { Authorization: `Bearer ${access_token}` } }
         );
 
-        const buyer_id = order.data.buyer.id;
-        const buyer_name = order.data.buyer.first_name;  // 👈 OBTENEMOS EL NOMBRE
+        const buyer = order.data.buyer;
+        const buyer_id = buyer.id;
         const item_id = order.data.order_items[0].item.id;
-        
-        console.log("👤 Comprador:", buyer_name);
 
-
+        console.log("👤 Comprador:", buyer.first_name);
         console.log("🧾 Producto comprado:", item_id);
 
-        // 📌 Buscar mensaje personalizado
-        const mensajePersonalizado = mensajesPorProducto[item_id];
+        // Buscar mensaje personalizado
+        const generarMensaje = mensajesPorPublicacion[item_id];
 
-        // 📌 Mensaje final (personalizado o genérico)
-        const texto = mensajePersonalizado
-            ? mensajePersonalizado
-            // Mensajes personalizados por publicación (item_id)
-            const mensajesPorPublicacion = {
-                "MLA2647136094": (buyer) => `
-            Hola ${buyer.first_name}, ¡muchas gracias por tu compra! 💛
-            
-            Recordá abrir este mensaje desde una computadora. Desde la app del celular no vas a poder copiar correctamente el enlace.
-            
-            Para descargar tu kit de *Super Mario*, copiá y pegá este link en tu navegador:
-            
-            LINK:
-            https://www.mediafire.com/folder/hq3d89hrpymaw/Kit_Imprimible_Super_Mario
-            
-            Si necesitás ayuda, escribime por esta mensajería. Respondo siempre dentro de las 24 hs.
-            
-            Podés ver más diseños acá:
-            https://listado.mercadolibre.com.ar/_CustId_661848292
-            
-            ¡Gracias nuevamente y que disfrutes tu compra! 🎉
-            `,
-            
-                "MLA987654321": (buyer) => `
-            Hola ${buyer.first_name}, gracias por comprar el kit de Sonic 🦔💙
-            
-            (otro texto personalizado)
-            `
-            };
+        if (!generarMensaje) {
+            console.log("⚠ No hay mensaje configurado para este item:", item_id);
+            return;
+        }
 
-        // 2) Enviar mensaje
+        const texto = generarMensaje(buyer);
+
+        // Construir mensaje
         const mensaje = {
             from: { user_id: "me" },
             to: { user_id: buyer_id },
             text: texto
         };
 
+        // Enviar mensaje por ML
         await axios.post(
             "https://api.mercadolibre.com/messages/packs/send",
             mensaje,
